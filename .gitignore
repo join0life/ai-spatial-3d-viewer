@@ -42,3 +42,7 @@ next-env.d.ts
 
 # AI Agent file
 AGENTS.md
+
+# AI-Hub source / derived data
+src/features/scene/data/*.json
+!src/features/scene/data/sample-scene.json

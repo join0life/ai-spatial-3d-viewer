@@ -1,0 +1,40 @@
+{
+  "info": {
+    "info.name": "항공영상 도시건물 변화탐지 데이터",
+    "info.id": "TIFF_CHANGE_safe_01",
+    "info.date_created": "2021-04-09 09:00:00",
+    "info.src_path": "/dataSet/change",
+    "info.label_path": "/dataSet/change",
+    "info.category": 2,
+    "info.type": 1
+  },
+  "images": {
+    "images.id": "2019_DBG_1LB_000005.tif",
+    "images.type": "TIF",
+    "images.data_captured": "2021-08-26 17:49:24",
+    "images.size": 1703,
+    "images.width": 1508,
+    "images.height": 754,
+    "images.h_resolution": 150,
+    "images.v_resolution": 150,
+    "images.bit": 24
+  },
+  "annotations": [
+    {
+      "polygon.id": "PLG_000000",
+      "polygon.name": "building",
+      "polygon.points": [
+        [1056.5897341067248, 316.18122145441106],
+        [1190.713823174877, 327.9108389457345],
+        [1178.4142342210291, 450.48534173006465],
+        [1117.5019841638768, 444.62053298440287],
+        [1115.7449000276129, 467.4932870924837],
+        [1041.9473663045246, 462.2149592213881]
+      ],
+      "polygon.shape": 0,
+      "polygon.shift": 2,
+      "polygon.updates": [3],
+      "polygon.address": "서울특별시 도봉구 쌍문1동 512-21"
+    }
+  ]
+}
