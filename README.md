@@ -32,20 +32,25 @@ AI-Hub 항공영상 도시건물 변화탐지 데이터는 과거 항공영상�
 
 본 프로젝트는 AI 모델 학습이나 변화탐지 알고리즘 구현이 아니라, 이미 제공된 annotation 데이터를 구조화하고 Three.js 기반 3D UI로 시각화하는 것에 초점을 둡니다.
 
-## 5. 데이터 가공
+## 5. 데이터
+
+### 5.1 데이터 사용 안내
+
+AI-Hub 원본 데이터 및 원본 annotation 파일은 이용정책상 repository에 포함하지 않았습니다.  
+대신 프로젝트 구조와 시각화 방식을 확인할 수 있도록 소규모 샘플 JSON 데이터를 제공합니다.
+
+### 5.2 데이터 가공
 
 원본 annotation을 그대로 사용하지 않고, 3D 렌더링과 인터랙션에 필요한 형태로 가공했습니다.
 
-| 가공 데이터       | 설명                                      |
-| ----------------- | ----------------------------------------- |
-| `changeType`      | `polygon.shift`를 신축/소멸/갱신으로 매핑 |
-| `updateTypes`     | `polygon.update`를 갱신 세부유형으로 매핑 |
-| `bbox`            | polygon을 감싸는 2D 사각형                |
-| `center`          | bbox 기준 중심점                          |
-| `worldPolygon`    | Three.js 좌표로 변환한 polygon            |
-| `worldBBox`       | Three.js 좌표로 변환한 bbox               |
-| `visualHeight`    | 3D extrusion 표현용 높이                  |
-| `displayPriority` | 화면상 표시 우선순위                      |
+| 가공 데이터       | 설명                           |
+| ----------------- | ------------------------------ |
+| `bbox`            | polygon을 감싸는 2D 사각형     |
+| `center`          | bbox 기준 중심점               |
+| `worldPolygon`    | Three.js 좌표로 변환한 polygon |
+| `worldBBox`       | Three.js 좌표로 변환한 bbox    |
+| `visualHeight`    | 3D extrusion 표현용 높이       |
+| `displayPriority` | 화면상 표시 우선순위           |
 
 `visualHeight`는 실제 건물 높이가 아니라, 변화 유형을 3D 공간에서 구분하기 위한 시각화용 값입니다. AI-Hub annotation에는 실제 건물 높이값이 포함되어 있지 않습니다.
 
@@ -93,6 +98,7 @@ low
 - TypeScript
 - Three.js
 - Vercel
+- Shadcn/ui
   // TODO: 추후 업데이트
 
 ## 9. References
