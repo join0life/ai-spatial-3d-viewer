@@ -8,23 +8,23 @@ type SceneCardProps = {
 
 export default function SceneCard({ scene }: SceneCardProps) {
   return (
-    <>
+    <figure className="flex min-w-0 flex-1 items-center gap-2">
       <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md bg-muted group-data-[collapsible=icon]:size-6">
         <Image
           src={scene.thumbnailPath}
-          alt={`${scene.label} 항공영상 썸네일`}
+          alt=""
           fill
           sizes="80px"
           className="object-cover"
         />
       </div>
 
-      <div className="min-w-0 text-left group-data-[collapsible=icon]:hidden">
+      <figcaption className="min-w-0 text-left group-data-[collapsible=icon]:hidden">
         <p className="truncate text-sm font-medium">{scene.label}</p>
         <p className="truncate text-xs text-muted-foreground">
           {scene.description}
         </p>
-      </div>
-    </>
+      </figcaption>
+    </figure>
   );
 }
