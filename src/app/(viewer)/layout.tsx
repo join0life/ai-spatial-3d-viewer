@@ -8,10 +8,12 @@ export default function ViewerLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh min-h-0 overflow-hidden">
       <SceneSidebar />
       <ViewerSidebarTrigger />
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-gray-900">
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   );
 }
