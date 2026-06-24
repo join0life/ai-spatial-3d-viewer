@@ -1,6 +1,9 @@
 "use client";
 
+import { normalizeSceneAnnotation } from "@/features/scene/lib/annotation-mappers";
+import { imageToWorld } from "@/features/scene/lib/coordinates";
 import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
+import type { RawSceneAnnotation } from "@/features/scene/types/scene";
 import * as THREE from "three";
 import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
 import { useEffect, useRef } from "react";
@@ -15,6 +18,8 @@ const PLANE_COLOR = "#334155";
 const PLANE_WIDTH = 12;
 const PLANE_DEPTH = 12;
 const MATERIAL_COLOR = "#ffffff";
+const MARKER_COLOR = "#ef4444";
+const MARKER_RADIUS = 0.1;
 
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -29,6 +34,7 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
 
     let disposed = false;
     let texture: THREE.DataTexture | null = null;
+    const annotationRequest = new AbortController();
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(SCENE_BACKGROUND_COLOR);
@@ -95,6 +101,55 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     controls.maxDistance = 24;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
+    const markerGeometry = new THREE.SphereGeometry(MARKER_RADIUS, 16, 16);
+    const markerMaterial = new THREE.MeshBasicMaterial({ color: MARKER_COLOR });
+    const markerGroup = new THREE.Group();
+    scene.add(markerGroup);
+
+    const loadAnnotation = async () => {
+      try {
+        const response = await fetch(sceneItem.annotationFile, {
+          signal: annotationRequest.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const rawAnnotation: RawSceneAnnotation = await response.json();
+        const annotationData = normalizeSceneAnnotation(rawAnnotation);
+
+        if (disposed) {
+          return;
+        }
+
+        annotationData.objects.forEach((object) => {
+          const [x, y, z] = imageToWorld(
+            object.center[0],
+            object.center[1],
+            annotationData.imageWidth,
+            annotationData.imageHeight,
+            PLANE_WIDTH,
+            PLANE_DEPTH,
+            MARKER_RADIUS,
+          );
+          const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+          marker.position.set(x, y, z);
+          marker.userData.sceneObjectId = object.id;
+          markerGroup.add(marker);
+        });
+      } catch (error) {
+        if (!annotationRequest.signal.aborted) {
+          console.error(
+            `Failed to load annotation: ${sceneItem.annotationFile}`,
+            error,
+          );
+        }
+      }
+    };
+
+    void loadAnnotation();
+
     let animationFrameId = 0;
 
     const animate = () => {
@@ -107,11 +162,14 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
 
     return () => {
       disposed = true;
+      annotationRequest.abort();
       window.cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
       planeGeometry.dispose();
       planeMaterial.dispose();
       texture?.dispose();
+      markerGeometry.dispose();
+      markerMaterial.dispose();
       controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();
