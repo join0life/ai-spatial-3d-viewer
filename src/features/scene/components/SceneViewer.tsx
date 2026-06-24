@@ -1,7 +1,8 @@
 "use client";
 
-import type { SceneId } from "@/features/scene/lib/scenes";
+import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
 import * as THREE from "three";
+import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
 import { useEffect, useRef } from "react";
 
 type SceneViewerProps = {
@@ -12,16 +13,21 @@ const SCENE_BACKGROUND_COLOR = "#111827";
 const PLANE_COLOR = "#334155";
 const PLANE_WIDTH = 12;
 const PLANE_DEPTH = 12;
+const MATERIAL_COLOR = "#ffffff";
 
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const container = containerRef.current;
+    const sceneItem = getSceneById(sceneId);
 
-    if (!container) {
+    if (!container || !sceneItem) {
       return;
     }
+
+    let disposed = false;
+    let texture: THREE.DataTexture | null = null;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(SCENE_BACKGROUND_COLOR);
@@ -58,6 +64,29 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     plane.rotation.x = -Math.PI / 2;
     scene.add(plane);
 
+    const textureLoader = new TIFFLoader();
+    textureLoader.load(
+      sceneItem.imagePath,
+      (loadedTexture) => {
+        if (disposed) {
+          loadedTexture.dispose();
+          return;
+        }
+
+        texture = loadedTexture;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        planeMaterial.map = texture;
+        planeMaterial.color.set(MATERIAL_COLOR);
+        planeMaterial.needsUpdate = true;
+      },
+      undefined,
+      (error) => {
+        if (!disposed) {
+          console.error(`Failed to load TIFF: ${sceneItem.imagePath}`, error);
+        }
+      },
+    );
+
     let animationFrameId = 0;
 
     const animate = () => {
@@ -68,16 +97,16 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     animate();
 
     return () => {
+      disposed = true;
       window.cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
       planeGeometry.dispose();
       planeMaterial.dispose();
+      texture?.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, []);
-
-  void sceneId;
+  }, [sceneId]);
 
   return (
     <div
