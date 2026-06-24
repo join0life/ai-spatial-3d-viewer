@@ -4,6 +4,7 @@ import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
 import * as THREE from "three";
 import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
 import { useEffect, useRef } from "react";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 type SceneViewerProps = {
   sceneId: SceneId;
@@ -87,9 +88,17 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       },
     );
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0, 0);
+    controls.minDistance = 4;
+    controls.maxDistance = 24;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
     let animationFrameId = 0;
 
     const animate = () => {
+      controls.update();
       renderer.render(scene, camera);
       animationFrameId = window.requestAnimationFrame(animate);
     };
@@ -103,6 +112,7 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       planeGeometry.dispose();
       planeMaterial.dispose();
       texture?.dispose();
+      controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
