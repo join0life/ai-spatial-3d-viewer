@@ -9,7 +9,9 @@ type SceneViewerProps = {
 };
 
 const SCENE_BACKGROUND_COLOR = "#111827";
-const SCENE_OBJECT_COLOR = "#90EE90";
+const PLANE_COLOR = "#334155";
+const PLANE_WIDTH = 12;
+const PLANE_DEPTH = 12;
 
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,16 +26,9 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(SCENE_BACKGROUND_COLOR);
 
-    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({
-      color: SCENE_OBJECT_COLOR,
-    });
-    const cube = new THREE.Mesh(boxGeometry, material);
-
-    scene.add(cube);
-
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-    camera.position.z = 5;
+    camera.position.set(0, 8, 8);
+    camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -57,6 +52,12 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     resizeObserver.observe(container);
     resize();
 
+    const planeGeometry = new THREE.PlaneGeometry(PLANE_WIDTH, PLANE_DEPTH);
+    const planeMaterial = new THREE.MeshBasicMaterial({ color: PLANE_COLOR });
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.rotation.x = -Math.PI / 2;
+    scene.add(plane);
+
     let animationFrameId = 0;
 
     const animate = () => {
@@ -69,8 +70,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     return () => {
       window.cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
-      boxGeometry.dispose();
-      material.dispose();
+      planeGeometry.dispose();
+      planeMaterial.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
