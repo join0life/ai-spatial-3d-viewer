@@ -13,6 +13,7 @@ export type UpdateType =
 export type ShapeType = "complete" | "partial";
 export type DisplayPriority = "high" | "medium" | "low";
 export type AnnotationSourcePanel = "before" | "after"; // annotation 원본 좌표의 출처를 기록하기 위해 필요한 타입
+export type VisualizationMode = "polygon" | "bbox" | "both";
 
 export type BBox = {
   x: number;
