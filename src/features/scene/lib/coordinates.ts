@@ -1,6 +1,7 @@
 import { clipPolygonToBBox } from "@/features/scene/lib/geometry";
 import type {
   AnnotationSourcePanel,
+  BBox,
   Point2D,
   WorldPoint,
 } from "@/features/scene/types/scene";
@@ -66,7 +67,7 @@ export function imageToWorld(
   return [
     (x / imageWidth - 0.5) * planeWidth,
     yOffset,
-    -(y / imageHeight - 0.5) * planeDepth,
+    (y / imageHeight - 0.5) * planeDepth,
   ];
 }
 
@@ -88,5 +89,30 @@ export function polygonToWorld(
       planeDepth,
       yOffset,
     ),
+  );
+}
+
+export function bboxToWorld(
+  bbox: BBox,
+  imageWidth: number,
+  imageHeight: number,
+  planeWidth: number,
+  planeDepth: number,
+  yOffset = 0.05,
+): WorldPoint[] {
+  const points: Point2D[] = [
+    [bbox.x, bbox.y],
+    [bbox.x + bbox.width, bbox.y],
+    [bbox.x + bbox.width, bbox.y + bbox.height],
+    [bbox.x, bbox.y + bbox.height],
+  ];
+
+  return polygonToWorld(
+    points,
+    imageWidth,
+    imageHeight,
+    planeWidth,
+    planeDepth,
+    yOffset,
   );
 }

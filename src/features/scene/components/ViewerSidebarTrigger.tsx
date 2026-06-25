@@ -12,5 +12,7 @@ export default function ViewerSidebarTrigger() {
     return null;
   }
 
-  return <SidebarTrigger />;
+  return (
+    <SidebarTrigger />
+  );
 }
