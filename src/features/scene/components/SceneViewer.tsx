@@ -13,12 +13,13 @@ import {
   polygonToWorld,
 } from "@/features/scene/lib/coordinates";
 import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
+import {
+  applyVisualizationMode,
+  createLineLoop,
+  disposeLineLoopGroup,
+} from "@/features/scene/lib/viewer-helpers";
 import { SceneViewerControls } from "@/features/scene/components/SceneViewerControls";
-import type {
-  RawSceneAnnotation,
-  VisualizationMode,
-  WorldPoint,
-} from "@/features/scene/types/scene";
+import type { RawSceneAnnotation, VisualizationMode } from "@/features/scene/types/scene";
 import * as THREE from "three";
 import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
 import { useEffect, useRef, useState } from "react";
@@ -27,30 +28,6 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 type SceneViewerProps = {
   sceneId: SceneId;
 };
-
-function createLineLoop(
-  points: WorldPoint[],
-  material: THREE.LineBasicMaterial,
-): THREE.LineLoop {
-  const vertices = points.map(([x, y, z]) => new THREE.Vector3(x, y, z));
-  const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
-
-  return new THREE.LineLoop(geometry, material);
-}
-
-function applyVisualizationMode(
-  mode: VisualizationMode,
-  polygonGroup: THREE.Group | null,
-  bboxGroup: THREE.Group | null,
-) {
-  if (polygonGroup) {
-    polygonGroup.visible = mode === "polygon" || mode === "both";
-  }
-
-  if (bboxGroup) {
-    bboxGroup.visible = mode === "bbox" || mode === "both";
-  }
-}
 
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -266,16 +243,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       texture?.dispose();
       markerGeometry.dispose();
       markerMaterial.dispose();
-      polygonGroup.children.forEach((line) => {
-        if (line instanceof THREE.LineLoop) {
-          line.geometry.dispose();
-        }
-      });
-      bboxGroup.children.forEach((line) => {
-        if (line instanceof THREE.LineLoop) {
-          line.geometry.dispose();
-        }
-      });
+      disposeLineLoopGroup(polygonGroup);
+      disposeLineLoopGroup(bboxGroup);
       polygonMaterial.dispose();
       bboxMaterial.dispose();
       polygonGroupRef.current = null;
