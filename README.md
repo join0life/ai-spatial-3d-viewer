@@ -80,7 +80,7 @@ low
 
 - **Polygon**: AI-Hub annotation의 `polygon.points`를 기반으로 변화 건물의 실제 외곽 영역을 표시합니다.
 - **Bounding Box**: polygon의 최소/최대 x, y 좌표를 계산해 객체를 감싸는 사각형을 표시합니다.
-- **Polygon + Bounding Box**: 실제 변화 영역과 객체 식별 영역을 동시에 표시합니다.
+- **Polygon/Bounding Box**: 실제 변화 영역과 객체 식별 영역을 동시에 표시합니다.
 - **Extrusion**: polygon을 위로 돌출시켜 3D 형태로 강조합니다. 실제 건물 높이가 아니라 변화 유형별 시각화용 높이를 사용합니다.
 
 ### Marker Toggle
