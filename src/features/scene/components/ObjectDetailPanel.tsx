@@ -87,10 +87,20 @@ export function ObjectDetailPanel({
           <DetailRow label="표시 우선순위">
             {displayPriorityLabels[object.displayPriority]}
           </DetailRow>
+          <DetailRow label="표현 높이">
+            {object.visualHeight}
+          </DetailRow>
         </dl>
       ) : (
         <p className="mt-3 text-sm text-slate-400">
           지도에서 변화 객체를 선택해 주세요.
+        </p>
+      )}
+
+      {object && (
+        <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-slate-400">
+          표현 높이는 신축 6, 갱신 3, 소멸 1로 구분한 상대적인 시각화
+          값입니다. 실제 높이, 변화량 또는 중요도를 의미하지 않습니다.
         </p>
       )}
     </aside>
