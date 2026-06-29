@@ -37,10 +37,44 @@ export function createPolygonHitMesh(
   return new THREE.Mesh(geometry, material);
 }
 
+export function createExtrusionMesh(
+  points: WorldPoint[],
+  height: number,
+  material: THREE.MeshBasicMaterial,
+): THREE.Mesh {
+  const outline = points.map(([x, , z]) => new THREE.Vector2(x, -z));
+  const firstPoint = outline[0];
+  const lastPoint = outline.at(-1);
+
+  if (firstPoint && lastPoint && firstPoint.equals(lastPoint)) {
+    outline.pop();
+  }
+
+  if (outline.length < 3) {
+    return new THREE.Mesh(new THREE.BufferGeometry(), material);
+  }
+
+  const shape = new THREE.Shape();
+  shape.moveTo(outline[0].x, outline[0].y);
+  outline.slice(1).forEach(({ x, y }) => shape.lineTo(x, y));
+  shape.closePath();
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: height,
+    bevelEnabled: false,
+    steps: 1,
+  });
+  geometry.rotateX(-Math.PI / 2);
+  geometry.translate(0, points[0][1], 0);
+
+  return new THREE.Mesh(geometry, material);
+}
+
 export function applyVisualizationMode(
   mode: VisualizationMode,
   polygonGroup: THREE.Group | null,
   bboxGroup: THREE.Group | null,
+  extrusionGroup: THREE.Group | null = null,
 ) {
   if (polygonGroup) {
     polygonGroup.visible = mode === "polygon" || mode === "both";
@@ -48,6 +82,10 @@ export function applyVisualizationMode(
 
   if (bboxGroup) {
     bboxGroup.visible = mode === "bbox" || mode === "both";
+  }
+
+  if (extrusionGroup) {
+    extrusionGroup.visible = mode === "extrusion";
   }
 }
 

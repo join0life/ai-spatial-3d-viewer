@@ -2,6 +2,7 @@
 
 import {
   VIEWER_ANNOTATION,
+  VIEWER_EXTRUSION,
   VIEWER_INTERACTION,
   VIEWER_MARKER,
   VIEWER_PLANE,
@@ -18,6 +19,7 @@ import {
 import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
 import {
   applyVisualizationMode,
+  createExtrusionMesh,
   createLineLoop,
   createPolygonHitMesh,
   disposeLineLoopGroup,
@@ -45,13 +47,18 @@ type SelectedSceneObject = {
 
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const markerGroupRef = useRef<THREE.Group | null>(null);
   const polygonGroupRef = useRef<THREE.Group | null>(null);
   const bboxGroupRef = useRef<THREE.Group | null>(null);
+  const extrusionGroupRef = useRef<THREE.Group | null>(null);
   const selectedPolygonGroupRef = useRef<THREE.Group | null>(null);
   const selectedBBoxGroupRef = useRef<THREE.Group | null>(null);
+  const selectedExtrusionGroupRef = useRef<THREE.Group | null>(null);
   const visualizationModeRef = useRef<VisualizationMode>("both");
+  const showMarkerRef = useRef(true);
   const [visualizationMode, setVisualizationMode] =
     useState<VisualizationMode>("both");
+  const [showMarker, setShowMarker] = useState(true);
   const [selectedSceneObject, setSelectedSceneObject] =
     useState<SelectedSceneObject>(null);
 
@@ -66,13 +73,23 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       visualizationMode,
       polygonGroupRef.current,
       bboxGroupRef.current,
+      extrusionGroupRef.current,
     );
     applyVisualizationMode(
       visualizationMode,
       selectedPolygonGroupRef.current,
       selectedBBoxGroupRef.current,
+      selectedExtrusionGroupRef.current,
     );
   }, [visualizationMode]);
+
+  useEffect(() => {
+    showMarkerRef.current = showMarker;
+
+    if (markerGroupRef.current) {
+      markerGroupRef.current.visible = showMarker;
+    }
+  }, [showMarker]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -166,6 +183,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       color: VIEWER_MARKER.color,
     });
     const markerGroup = new THREE.Group();
+    markerGroup.visible = showMarkerRef.current;
+    markerGroupRef.current = markerGroup;
     const polygonMaterial = new THREE.LineBasicMaterial({
       color: VIEWER_ANNOTATION.polygonColor,
     });
@@ -175,6 +194,16 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     const selectionMaterial = new THREE.LineBasicMaterial({
       color: VIEWER_INTERACTION.highlightColor,
     });
+    const extrusionMaterial = new THREE.MeshBasicMaterial({
+      color: VIEWER_EXTRUSION.color,
+      opacity: VIEWER_EXTRUSION.opacity,
+      transparent: true,
+      side: THREE.DoubleSide,
+    });
+    const selectedExtrusionMaterial = new THREE.MeshBasicMaterial({
+      color: VIEWER_INTERACTION.highlightColor,
+      wireframe: true,
+    });
     const hitAreaMaterial = new THREE.MeshBasicMaterial({
       transparent: true,
       opacity: 0,
@@ -183,34 +212,47 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     });
     const polygonGroup = new THREE.Group();
     const bboxGroup = new THREE.Group();
+    const extrusionGroup = new THREE.Group();
     const polygonHitAreaGroup = new THREE.Group();
     const bboxHitAreaGroup = new THREE.Group();
     const selectedPolygonGroup = new THREE.Group();
     const selectedBBoxGroup = new THREE.Group();
+    const selectedExtrusionGroup = new THREE.Group();
     polygonGroupRef.current = polygonGroup;
     bboxGroupRef.current = bboxGroup;
+    extrusionGroupRef.current = extrusionGroup;
     selectedPolygonGroupRef.current = selectedPolygonGroup;
     selectedBBoxGroupRef.current = selectedBBoxGroup;
+    selectedExtrusionGroupRef.current = selectedExtrusionGroup;
     applyVisualizationMode(
       visualizationModeRef.current,
       polygonGroup,
       bboxGroup,
+      extrusionGroup,
     );
     applyVisualizationMode(
       visualizationModeRef.current,
       selectedPolygonGroup,
       selectedBBoxGroup,
+      selectedExtrusionGroup,
     );
     scene.add(markerGroup);
     scene.add(polygonGroup, bboxGroup);
+    scene.add(extrusionGroup);
     scene.add(polygonHitAreaGroup, bboxHitAreaGroup);
-    scene.add(selectedPolygonGroup, selectedBBoxGroup);
+    scene.add(
+      selectedPolygonGroup,
+      selectedBBoxGroup,
+      selectedExtrusionGroup,
+    );
 
     const clearSelectionHighlight = () => {
       disposeLineLoopGroup(selectedPolygonGroup);
       disposeLineLoopGroup(selectedBBoxGroup);
+      disposeMeshGroup(selectedExtrusionGroup);
       selectedPolygonGroup.clear();
       selectedBBoxGroup.clear();
+      selectedExtrusionGroup.clear();
     };
 
     const renderSelectionHighlight = (
@@ -242,6 +284,14 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       );
       selectedBBoxGroup.add(
         createLineLoop(selectedWorldBBox, selectionMaterial),
+      );
+
+      selectedExtrusionGroup.add(
+        createExtrusionMesh(
+          selectedWorldPolygon,
+          object.visualHeight * VIEWER_EXTRUSION.heightScale,
+          selectedExtrusionMaterial,
+        ),
       );
     };
 
@@ -289,6 +339,7 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
         ...(mode === "bbox" || mode === "both"
           ? bboxHitAreaGroup.children
           : []),
+        ...(mode === "extrusion" ? extrusionGroup.children : []),
       ];
       const [intersection] = raycaster.intersectObjects(clickTargets, false);
       const selectedObjectId = intersection?.object.userData.sceneObjectId;
@@ -363,6 +414,14 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
           polygonHitArea.userData.sceneObjectId = object.id;
           polygonHitAreaGroup.add(polygonHitArea);
 
+          const extrusion = createExtrusionMesh(
+            worldPolygon,
+            object.visualHeight * VIEWER_EXTRUSION.heightScale,
+            extrusionMaterial,
+          );
+          extrusion.userData.sceneObjectId = object.id;
+          extrusionGroup.add(extrusion);
+
           const worldBBox = bboxToWorld(
             object.bbox,
             normalizedAnnotationData.imageWidth,
@@ -417,17 +476,23 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       markerMaterial.dispose();
       disposeLineLoopGroup(polygonGroup);
       disposeLineLoopGroup(bboxGroup);
+      disposeMeshGroup(extrusionGroup);
       disposeMeshGroup(polygonHitAreaGroup);
       disposeMeshGroup(bboxHitAreaGroup);
       clearSelectionHighlight();
       polygonMaterial.dispose();
       bboxMaterial.dispose();
       selectionMaterial.dispose();
+      extrusionMaterial.dispose();
+      selectedExtrusionMaterial.dispose();
       hitAreaMaterial.dispose();
+      markerGroupRef.current = null;
       polygonGroupRef.current = null;
       bboxGroupRef.current = null;
+      extrusionGroupRef.current = null;
       selectedPolygonGroupRef.current = null;
       selectedBBoxGroupRef.current = null;
+      selectedExtrusionGroupRef.current = null;
       controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();
@@ -439,6 +504,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       <SceneViewerControls
         visualizationMode={visualizationMode}
         onVisualizationModeChange={setVisualizationMode}
+        showMarker={showMarker}
+        onShowMarkerChange={setShowMarker}
       />
       <ObjectDetailPanel
         object={selectedObject}

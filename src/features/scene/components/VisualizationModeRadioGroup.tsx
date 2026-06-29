@@ -36,8 +36,14 @@ const VISUALIZATION_MODE_OPTIONS: VisualizationModeOption[] = [
   },
   {
     value: "both",
-    label: "Both",
+    label: "Polygon/BBox",
     description: "Polygon과 BBox를 함께 표시합니다.",
+  },
+  {
+    value: "extrusion",
+    label: "Extrusion",
+    description:
+      "신축 6, 갱신 3, 소멸 1의 상대값으로 돌출합니다. 실제 높이나 중요도를 의미하지 않습니다.",
   },
 ];
 
