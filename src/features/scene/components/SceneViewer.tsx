@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  VIEWER_ANNOTATION,
+  VIEWER_MARKER,
+  VIEWER_PLANE,
+  VIEWER_SCENE,
+} from "@/features/scene/constants/viewer";
 import { normalizeSceneAnnotation } from "@/features/scene/lib/annotation-mappers";
 import {
   bboxToWorld,
@@ -7,43 +13,38 @@ import {
   polygonToWorld,
 } from "@/features/scene/lib/coordinates";
 import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
-import type {
-  RawSceneAnnotation,
-  WorldPoint,
-} from "@/features/scene/types/scene";
+import {
+  applyVisualizationMode,
+  createLineLoop,
+  disposeLineLoopGroup,
+} from "@/features/scene/lib/viewer-helpers";
+import { SceneViewerControls } from "@/features/scene/components/SceneViewerControls";
+import type { RawSceneAnnotation, VisualizationMode } from "@/features/scene/types/scene";
 import * as THREE from "three";
 import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 type SceneViewerProps = {
   sceneId: SceneId;
 };
 
-const SCENE_BACKGROUND_COLOR = "#111827";
-const PLANE_COLOR = "#334155";
-const PLANE_WIDTH = 12;
-const PLANE_DEPTH = 12;
-const MATERIAL_COLOR = "#ffffff";
-const MARKER_COLOR = "#ef4444";
-const MARKER_RADIUS = 0.1;
-const POLYGON_COLOR = "#f97316";
-const BBOX_COLOR = "#22d3ee";
-const POLYGON_Y_OFFSET = 0.04;
-const BBOX_Y_OFFSET = 0.06;
-
-function createLineLoop(
-  points: WorldPoint[],
-  material: THREE.LineBasicMaterial,
-): THREE.LineLoop {
-  const vertices = points.map(([x, y, z]) => new THREE.Vector3(x, y, z));
-  const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
-
-  return new THREE.LineLoop(geometry, material);
-}
-
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const polygonGroupRef = useRef<THREE.Group | null>(null);
+  const bboxGroupRef = useRef<THREE.Group | null>(null);
+  const visualizationModeRef = useRef<VisualizationMode>("both");
+  const [visualizationMode, setVisualizationMode] =
+    useState<VisualizationMode>("both");
+
+  useEffect(() => {
+    visualizationModeRef.current = visualizationMode;
+    applyVisualizationMode(
+      visualizationMode,
+      polygonGroupRef.current,
+      bboxGroupRef.current,
+    );
+  }, [visualizationMode]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -58,7 +59,7 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     const annotationRequest = new AbortController();
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(SCENE_BACKGROUND_COLOR);
+    scene.background = new THREE.Color(VIEWER_SCENE.backgroundColor);
 
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
     camera.position.set(0, 8, 8);
@@ -86,8 +87,13 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     resizeObserver.observe(container);
     resize();
 
-    const planeGeometry = new THREE.PlaneGeometry(PLANE_WIDTH, PLANE_DEPTH);
-    const planeMaterial = new THREE.MeshBasicMaterial({ color: PLANE_COLOR });
+    const planeGeometry = new THREE.PlaneGeometry(
+      VIEWER_PLANE.width,
+      VIEWER_PLANE.depth,
+    );
+    const planeMaterial = new THREE.MeshBasicMaterial({
+      color: VIEWER_PLANE.color,
+    });
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     plane.rotation.x = -Math.PI / 2;
     scene.add(plane);
@@ -104,7 +110,7 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
         texture = loadedTexture;
         texture.colorSpace = THREE.SRGBColorSpace;
         planeMaterial.map = texture;
-        planeMaterial.color.set(MATERIAL_COLOR);
+        planeMaterial.color.set(VIEWER_PLANE.materialColor);
         planeMaterial.needsUpdate = true;
       },
       undefined,
@@ -122,15 +128,30 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     controls.maxDistance = 24;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-    const markerGeometry = new THREE.SphereGeometry(MARKER_RADIUS, 16, 16);
-    const markerMaterial = new THREE.MeshBasicMaterial({ color: MARKER_COLOR });
+    const markerGeometry = new THREE.SphereGeometry(
+      VIEWER_MARKER.radius,
+      16,
+      16,
+    );
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color: VIEWER_MARKER.color,
+    });
     const markerGroup = new THREE.Group();
     const polygonMaterial = new THREE.LineBasicMaterial({
-      color: POLYGON_COLOR,
+      color: VIEWER_ANNOTATION.polygonColor,
     });
-    const bboxMaterial = new THREE.LineBasicMaterial({ color: BBOX_COLOR });
+    const bboxMaterial = new THREE.LineBasicMaterial({
+      color: VIEWER_ANNOTATION.bboxColor,
+    });
     const polygonGroup = new THREE.Group();
     const bboxGroup = new THREE.Group();
+    polygonGroupRef.current = polygonGroup;
+    bboxGroupRef.current = bboxGroup;
+    applyVisualizationMode(
+      visualizationModeRef.current,
+      polygonGroup,
+      bboxGroup,
+    );
     scene.add(markerGroup);
     scene.add(polygonGroup, bboxGroup);
 
@@ -157,9 +178,9 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
             object.center[1],
             annotationData.imageWidth,
             annotationData.imageHeight,
-            PLANE_WIDTH,
-            PLANE_DEPTH,
-            MARKER_RADIUS,
+            VIEWER_PLANE.width,
+            VIEWER_PLANE.depth,
+            VIEWER_MARKER.radius,
           );
           const marker = new THREE.Mesh(markerGeometry, markerMaterial);
           marker.position.set(x, y, z);
@@ -170,9 +191,9 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
             object.polygon,
             annotationData.imageWidth,
             annotationData.imageHeight,
-            PLANE_WIDTH,
-            PLANE_DEPTH,
-            POLYGON_Y_OFFSET,
+            VIEWER_PLANE.width,
+            VIEWER_PLANE.depth,
+            VIEWER_ANNOTATION.polygonYOffset,
           );
           const polygonLine = createLineLoop(worldPolygon, polygonMaterial);
           polygonLine.userData.sceneObjectId = object.id;
@@ -182,9 +203,9 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
             object.bbox,
             annotationData.imageWidth,
             annotationData.imageHeight,
-            PLANE_WIDTH,
-            PLANE_DEPTH,
-            BBOX_Y_OFFSET,
+            VIEWER_PLANE.width,
+            VIEWER_PLANE.depth,
+            VIEWER_ANNOTATION.bboxYOffset,
           );
           const bboxLine = createLineLoop(worldBBox, bboxMaterial);
           bboxLine.userData.sceneObjectId = object.id;
@@ -222,18 +243,12 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       texture?.dispose();
       markerGeometry.dispose();
       markerMaterial.dispose();
-      polygonGroup.children.forEach((line) => {
-        if (line instanceof THREE.LineLoop) {
-          line.geometry.dispose();
-        }
-      });
-      bboxGroup.children.forEach((line) => {
-        if (line instanceof THREE.LineLoop) {
-          line.geometry.dispose();
-        }
-      });
+      disposeLineLoopGroup(polygonGroup);
+      disposeLineLoopGroup(bboxGroup);
       polygonMaterial.dispose();
       bboxMaterial.dispose();
+      polygonGroupRef.current = null;
+      bboxGroupRef.current = null;
       controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();
@@ -241,9 +256,12 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
   }, [sceneId]);
 
   return (
-    <div
-      ref={containerRef}
-      className="min-h-0 min-w-0 flex-1 overflow-hidden bg-gray-900"
-    />
+    <section className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-gray-900">
+      <SceneViewerControls
+        visualizationMode={visualizationMode}
+        onVisualizationModeChange={setVisualizationMode}
+      />
+      <div ref={containerRef} className="h-full min-h-0 w-full min-w-0" />
+    </section>
   );
 }
