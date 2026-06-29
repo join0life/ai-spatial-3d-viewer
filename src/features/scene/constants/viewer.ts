@@ -20,3 +20,9 @@ export const VIEWER_ANNOTATION = {
   polygonYOffset: 0.04,
   bboxYOffset: 0.06,
 } as const;
+
+export const VIEWER_INTERACTION = {
+  clickMovementThreshold: 5,
+  highlightColor: "#f8fafc",
+  highlightYOffset: 0.03,
+} as const;
