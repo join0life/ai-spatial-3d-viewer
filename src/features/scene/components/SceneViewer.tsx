@@ -2,10 +2,13 @@
 
 import {
   VIEWER_ANNOTATION,
+  VIEWER_INTERACTION,
   VIEWER_MARKER,
   VIEWER_PLANE,
   VIEWER_SCENE,
 } from "@/features/scene/constants/viewer";
+import { ObjectDetailPanel } from "@/features/scene/components/ObjectDetailPanel";
+import { SceneViewerControls } from "@/features/scene/components/SceneViewerControls";
 import { normalizeSceneAnnotation } from "@/features/scene/lib/annotation-mappers";
 import {
   bboxToWorld,
@@ -16,10 +19,16 @@ import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
 import {
   applyVisualizationMode,
   createLineLoop,
+  createPolygonHitMesh,
   disposeLineLoopGroup,
+  disposeMeshGroup,
 } from "@/features/scene/lib/viewer-helpers";
-import { SceneViewerControls } from "@/features/scene/components/SceneViewerControls";
-import type { RawSceneAnnotation, VisualizationMode } from "@/features/scene/types/scene";
+import type {
+  NormalizedSceneData,
+  RawSceneAnnotation,
+  SceneObject,
+  VisualizationMode,
+} from "@/features/scene/types/scene";
 import * as THREE from "three";
 import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
 import { useEffect, useRef, useState } from "react";
@@ -29,13 +38,27 @@ type SceneViewerProps = {
   sceneId: SceneId;
 };
 
+type SelectedSceneObject = {
+  sceneId: SceneId;
+  object: SceneObject;
+} | null;
+
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const polygonGroupRef = useRef<THREE.Group | null>(null);
   const bboxGroupRef = useRef<THREE.Group | null>(null);
+  const selectedPolygonGroupRef = useRef<THREE.Group | null>(null);
+  const selectedBBoxGroupRef = useRef<THREE.Group | null>(null);
   const visualizationModeRef = useRef<VisualizationMode>("both");
   const [visualizationMode, setVisualizationMode] =
     useState<VisualizationMode>("both");
+  const [selectedSceneObject, setSelectedSceneObject] =
+    useState<SelectedSceneObject>(null);
+
+  const selectedObject =
+    selectedSceneObject?.sceneId === sceneId
+      ? selectedSceneObject.object
+      : null;
 
   useEffect(() => {
     visualizationModeRef.current = visualizationMode;
@@ -43,6 +66,11 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       visualizationMode,
       polygonGroupRef.current,
       bboxGroupRef.current,
+    );
+    applyVisualizationMode(
+      visualizationMode,
+      selectedPolygonGroupRef.current,
+      selectedBBoxGroupRef.current,
     );
   }, [visualizationMode]);
 
@@ -56,6 +84,7 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
 
     let disposed = false;
     let texture: THREE.DataTexture | null = null;
+    let annotationData: NormalizedSceneData | null = null;
     const annotationRequest = new AbortController();
 
     const scene = new THREE.Scene();
@@ -143,17 +172,145 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     const bboxMaterial = new THREE.LineBasicMaterial({
       color: VIEWER_ANNOTATION.bboxColor,
     });
+    const selectionMaterial = new THREE.LineBasicMaterial({
+      color: VIEWER_INTERACTION.highlightColor,
+    });
+    const hitAreaMaterial = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
     const polygonGroup = new THREE.Group();
     const bboxGroup = new THREE.Group();
+    const polygonHitAreaGroup = new THREE.Group();
+    const bboxHitAreaGroup = new THREE.Group();
+    const selectedPolygonGroup = new THREE.Group();
+    const selectedBBoxGroup = new THREE.Group();
     polygonGroupRef.current = polygonGroup;
     bboxGroupRef.current = bboxGroup;
+    selectedPolygonGroupRef.current = selectedPolygonGroup;
+    selectedBBoxGroupRef.current = selectedBBoxGroup;
     applyVisualizationMode(
       visualizationModeRef.current,
       polygonGroup,
       bboxGroup,
     );
+    applyVisualizationMode(
+      visualizationModeRef.current,
+      selectedPolygonGroup,
+      selectedBBoxGroup,
+    );
     scene.add(markerGroup);
     scene.add(polygonGroup, bboxGroup);
+    scene.add(polygonHitAreaGroup, bboxHitAreaGroup);
+    scene.add(selectedPolygonGroup, selectedBBoxGroup);
+
+    const clearSelectionHighlight = () => {
+      disposeLineLoopGroup(selectedPolygonGroup);
+      disposeLineLoopGroup(selectedBBoxGroup);
+      selectedPolygonGroup.clear();
+      selectedBBoxGroup.clear();
+    };
+
+    const renderSelectionHighlight = (
+      object: SceneObject,
+      data: NormalizedSceneData,
+    ) => {
+      clearSelectionHighlight();
+
+      const selectedWorldPolygon = polygonToWorld(
+        object.polygon,
+        data.imageWidth,
+        data.imageHeight,
+        VIEWER_PLANE.width,
+        VIEWER_PLANE.depth,
+        VIEWER_ANNOTATION.polygonYOffset +
+          VIEWER_INTERACTION.highlightYOffset,
+      );
+      selectedPolygonGroup.add(
+        createLineLoop(selectedWorldPolygon, selectionMaterial),
+      );
+
+      const selectedWorldBBox = bboxToWorld(
+        object.bbox,
+        data.imageWidth,
+        data.imageHeight,
+        VIEWER_PLANE.width,
+        VIEWER_PLANE.depth,
+        VIEWER_ANNOTATION.bboxYOffset + VIEWER_INTERACTION.highlightYOffset,
+      );
+      selectedBBoxGroup.add(
+        createLineLoop(selectedWorldBBox, selectionMaterial),
+      );
+    };
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const pointerDownPosition = new THREE.Vector2();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      pointerDownPosition.set(event.clientX, event.clientY);
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const pointerUpPosition = new THREE.Vector2(event.clientX, event.clientY);
+
+      if (
+        pointerDownPosition.distanceTo(pointerUpPosition) >
+        VIEWER_INTERACTION.clickMovementThreshold
+      ) {
+        return;
+      }
+
+      const currentAnnotationData = annotationData;
+
+      if (!currentAnnotationData) {
+        return;
+      }
+
+      const canvasBounds = renderer.domElement.getBoundingClientRect();
+
+      if (canvasBounds.width === 0 || canvasBounds.height === 0) {
+        return;
+      }
+
+      pointer.set(
+        ((event.clientX - canvasBounds.left) / canvasBounds.width) * 2 - 1,
+        -((event.clientY - canvasBounds.top) / canvasBounds.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(pointer, camera);
+
+      const mode = visualizationModeRef.current;
+      const clickTargets = [
+        ...(mode === "polygon" || mode === "both"
+          ? polygonHitAreaGroup.children
+          : []),
+        ...(mode === "bbox" || mode === "both"
+          ? bboxHitAreaGroup.children
+          : []),
+      ];
+      const [intersection] = raycaster.intersectObjects(clickTargets, false);
+      const selectedObjectId = intersection?.object.userData.sceneObjectId;
+      const object =
+        typeof selectedObjectId === "string"
+          ? currentAnnotationData.objects.find(
+              (item) => item.id === selectedObjectId,
+            )
+          : undefined;
+
+      if (!object) {
+        clearSelectionHighlight();
+        setSelectedSceneObject(null);
+        return;
+      }
+
+      renderSelectionHighlight(object, currentAnnotationData);
+      setSelectedSceneObject({ sceneId, object });
+    };
+
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    renderer.domElement.addEventListener("pointerup", handlePointerUp);
 
     const loadAnnotation = async () => {
       try {
@@ -166,18 +323,19 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
         }
 
         const rawAnnotation: RawSceneAnnotation = await response.json();
-        const annotationData = normalizeSceneAnnotation(rawAnnotation);
+        const normalizedAnnotationData = normalizeSceneAnnotation(rawAnnotation);
+        annotationData = normalizedAnnotationData;
 
         if (disposed) {
           return;
         }
 
-        annotationData.objects.forEach((object) => {
+        normalizedAnnotationData.objects.forEach((object) => {
           const [x, y, z] = imageToWorld(
             object.center[0],
             object.center[1],
-            annotationData.imageWidth,
-            annotationData.imageHeight,
+            normalizedAnnotationData.imageWidth,
+            normalizedAnnotationData.imageHeight,
             VIEWER_PLANE.width,
             VIEWER_PLANE.depth,
             VIEWER_MARKER.radius,
@@ -189,8 +347,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
 
           const worldPolygon = polygonToWorld(
             object.polygon,
-            annotationData.imageWidth,
-            annotationData.imageHeight,
+            normalizedAnnotationData.imageWidth,
+            normalizedAnnotationData.imageHeight,
             VIEWER_PLANE.width,
             VIEWER_PLANE.depth,
             VIEWER_ANNOTATION.polygonYOffset,
@@ -198,11 +356,17 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
           const polygonLine = createLineLoop(worldPolygon, polygonMaterial);
           polygonLine.userData.sceneObjectId = object.id;
           polygonGroup.add(polygonLine);
+          const polygonHitArea = createPolygonHitMesh(
+            worldPolygon,
+            hitAreaMaterial,
+          );
+          polygonHitArea.userData.sceneObjectId = object.id;
+          polygonHitAreaGroup.add(polygonHitArea);
 
           const worldBBox = bboxToWorld(
             object.bbox,
-            annotationData.imageWidth,
-            annotationData.imageHeight,
+            normalizedAnnotationData.imageWidth,
+            normalizedAnnotationData.imageHeight,
             VIEWER_PLANE.width,
             VIEWER_PLANE.depth,
             VIEWER_ANNOTATION.bboxYOffset,
@@ -210,6 +374,12 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
           const bboxLine = createLineLoop(worldBBox, bboxMaterial);
           bboxLine.userData.sceneObjectId = object.id;
           bboxGroup.add(bboxLine);
+          const bboxHitArea = createPolygonHitMesh(
+            worldBBox,
+            hitAreaMaterial,
+          );
+          bboxHitArea.userData.sceneObjectId = object.id;
+          bboxHitAreaGroup.add(bboxHitArea);
         });
       } catch (error) {
         if (!annotationRequest.signal.aborted) {
@@ -238,6 +408,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       annotationRequest.abort();
       window.cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       planeGeometry.dispose();
       planeMaterial.dispose();
       texture?.dispose();
@@ -245,10 +417,17 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       markerMaterial.dispose();
       disposeLineLoopGroup(polygonGroup);
       disposeLineLoopGroup(bboxGroup);
+      disposeMeshGroup(polygonHitAreaGroup);
+      disposeMeshGroup(bboxHitAreaGroup);
+      clearSelectionHighlight();
       polygonMaterial.dispose();
       bboxMaterial.dispose();
+      selectionMaterial.dispose();
+      hitAreaMaterial.dispose();
       polygonGroupRef.current = null;
       bboxGroupRef.current = null;
+      selectedPolygonGroupRef.current = null;
+      selectedBBoxGroupRef.current = null;
       controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();
@@ -260,6 +439,10 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       <SceneViewerControls
         visualizationMode={visualizationMode}
         onVisualizationModeChange={setVisualizationMode}
+      />
+      <ObjectDetailPanel
+        object={selectedObject}
+        className="absolute bottom-4 right-4 z-10 w-[min(22rem,calc(100%-2rem))]"
       />
       <div ref={containerRef} className="h-full min-h-0 w-full min-w-0" />
     </section>
