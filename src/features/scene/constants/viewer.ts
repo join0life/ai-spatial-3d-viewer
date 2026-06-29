@@ -21,6 +21,12 @@ export const VIEWER_ANNOTATION = {
   bboxYOffset: 0.06,
 } as const;
 
+export const VIEWER_EXTRUSION = {
+  color: "#8b5cf6",
+  opacity: 0.65,
+  heightScale: 0.15,
+} as const;
+
 export const VIEWER_INTERACTION = {
   clickMovementThreshold: 5,
   highlightColor: "#f8fafc",

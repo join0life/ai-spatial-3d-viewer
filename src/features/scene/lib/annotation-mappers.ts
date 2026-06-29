@@ -30,6 +30,12 @@ const updateTypeMap = {
   4: "outline_changed",
 } as const;
 
+const visualHeightByChangeType: Record<ChangeType, number> = {
+  new: 6,
+  removed: 1,
+  updated: 3,
+};
+
 function getMappedValue<T extends string>(
   map: Record<number, T>,
   value: number,
@@ -83,6 +89,10 @@ export function getDisplayPriority(
   return "medium";
 }
 
+export function getVisualHeight(changeType: ChangeType): number {
+  return visualHeightByChangeType[changeType];
+}
+
 function mapSceneObject(
   annotation: RawPolygonAnnotation,
   sourceImageWidth: number,
@@ -109,6 +119,7 @@ function mapSceneObject(
     shapeType: mapShapeType(annotation["polygon.shape"]),
     address: annotation["polygon.address"] ?? null,
     displayPriority: getDisplayPriority(changeType, updateTypes),
+    visualHeight: getVisualHeight(changeType),
   };
 }
 
