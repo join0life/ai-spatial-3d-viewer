@@ -91,7 +91,9 @@ export function VisualizationModeRadioGroup({
                 value={option.value}
                 className="border-white/40 text-white data-checked:border-white data-checked:bg-white data-checked:text-gray-950"
               />
-              <span className="font-medium leading-none">{option.label}</span>
+              <span className="min-w-0 truncate font-medium leading-none">
+                {option.label}
+              </span>
             </TooltipTrigger>
             <TooltipContent>{option.description}</TooltipContent>
           </Tooltip>
