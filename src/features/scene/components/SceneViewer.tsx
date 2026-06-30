@@ -26,6 +26,7 @@ import {
   disposeMeshGroup,
 } from "@/features/scene/lib/viewer-helpers";
 import type {
+  ImagePeriod,
   NormalizedSceneData,
   RawSceneAnnotation,
   SceneObject,
@@ -45,8 +46,14 @@ type SelectedSceneObject = {
   object: SceneObject;
 } | null;
 
+type ImagePeriodTextures = Partial<
+  Record<ImagePeriod, THREE.DataTexture>
+>;
+
 export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const planeMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const imagePeriodTexturesRef = useRef<ImagePeriodTextures>({});
   const markerGroupRef = useRef<THREE.Group | null>(null);
   const polygonGroupRef = useRef<THREE.Group | null>(null);
   const bboxGroupRef = useRef<THREE.Group | null>(null);
@@ -55,7 +62,9 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
   const selectedBBoxGroupRef = useRef<THREE.Group | null>(null);
   const selectedExtrusionGroupRef = useRef<THREE.Group | null>(null);
   const visualizationModeRef = useRef<VisualizationMode>("both");
+  const imagePeriodRef = useRef<ImagePeriod>("after");
   const showMarkerRef = useRef(true);
+  const [imagePeriod, setImagePeriod] = useState<ImagePeriod>("after");
   const [visualizationMode, setVisualizationMode] =
     useState<VisualizationMode>("both");
   const [showMarker, setShowMarker] = useState(true);
@@ -66,6 +75,19 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     selectedSceneObject?.sceneId === sceneId
       ? selectedSceneObject.object
       : null;
+
+  useEffect(() => {
+    imagePeriodRef.current = imagePeriod;
+
+    const planeMaterial = planeMaterialRef.current;
+    const texture = imagePeriodTexturesRef.current[imagePeriod];
+
+    if (planeMaterial && texture) {
+      planeMaterial.map = texture;
+      planeMaterial.color.set(VIEWER_PLANE.materialColor);
+      planeMaterial.needsUpdate = true;
+    }
+  }, [imagePeriod]);
 
   useEffect(() => {
     visualizationModeRef.current = visualizationMode;
@@ -100,7 +122,7 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     }
 
     let disposed = false;
-    let texture: THREE.DataTexture | null = null;
+    const imagePeriodTextures: ImagePeriodTextures = {};
     let annotationData: NormalizedSceneData | null = null;
     const annotationRequest = new AbortController();
 
@@ -140,32 +162,42 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
     const planeMaterial = new THREE.MeshBasicMaterial({
       color: VIEWER_PLANE.color,
     });
+    planeMaterialRef.current = planeMaterial;
+    imagePeriodTexturesRef.current = imagePeriodTextures;
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     plane.rotation.x = -Math.PI / 2;
     scene.add(plane);
 
     const textureLoader = new TIFFLoader();
-    textureLoader.load(
-      sceneItem.imagePath,
-      (loadedTexture) => {
-        if (disposed) {
-          loadedTexture.dispose();
-          return;
-        }
+    const loadImagePeriodTexture = (period: ImagePeriod, path: string) => {
+      textureLoader.load(
+        path,
+        (loadedTexture) => {
+          if (disposed) {
+            loadedTexture.dispose();
+            return;
+          }
 
-        texture = loadedTexture;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        planeMaterial.map = texture;
-        planeMaterial.color.set(VIEWER_PLANE.materialColor);
-        planeMaterial.needsUpdate = true;
-      },
-      undefined,
-      (error) => {
-        if (!disposed) {
-          console.error(`Failed to load TIFF: ${sceneItem.imagePath}`, error);
-        }
-      },
-    );
+          loadedTexture.colorSpace = THREE.SRGBColorSpace;
+          imagePeriodTextures[period] = loadedTexture;
+
+          if (imagePeriodRef.current === period) {
+            planeMaterial.map = loadedTexture;
+            planeMaterial.color.set(VIEWER_PLANE.materialColor);
+            planeMaterial.needsUpdate = true;
+          }
+        },
+        undefined,
+        (error) => {
+          if (!disposed) {
+            console.error(`Failed to load ${period} TIFF: ${path}`, error);
+          }
+        },
+      );
+    };
+
+    loadImagePeriodTexture("after", sceneItem.afterImagePath);
+    loadImagePeriodTexture("before", sceneItem.beforeImagePath);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -470,8 +502,11 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       planeGeometry.dispose();
+      planeMaterial.map = null;
       planeMaterial.dispose();
-      texture?.dispose();
+      Object.values(imagePeriodTextures).forEach((texture) => {
+        texture.dispose();
+      });
       markerGeometry.dispose();
       markerMaterial.dispose();
       disposeLineLoopGroup(polygonGroup);
@@ -487,6 +522,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
       selectedExtrusionMaterial.dispose();
       hitAreaMaterial.dispose();
       markerGroupRef.current = null;
+      planeMaterialRef.current = null;
+      imagePeriodTexturesRef.current = {};
       polygonGroupRef.current = null;
       bboxGroupRef.current = null;
       extrusionGroupRef.current = null;
@@ -502,6 +539,8 @@ export default function SceneViewer({ sceneId }: SceneViewerProps) {
   return (
     <section className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-gray-900">
       <SceneViewerControls
+        imagePeriod={imagePeriod}
+        onImagePeriodChange={setImagePeriod}
         visualizationMode={visualizationMode}
         onVisualizationModeChange={setVisualizationMode}
         showMarker={showMarker}

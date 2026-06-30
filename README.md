@@ -72,6 +72,10 @@ low
 
 ## 6. 주요 기능
 
+### Before / After Image
+
+Before / After segmented control을 사용해 과거 항공영상과 현재 항공영상을 전환할 수 있습니다. 전환 시 Three.js scene, 카메라, annotation 시각화 상태는 유지하고 항공영상 plane의 texture만 변경합니다.
+
 ### Visualization Mode
 
 변화 객체를 네 가지 방식으로 시각화합니다. 각 모드는 한 번에 하나만 선택할 수 있습니다.
@@ -93,13 +97,27 @@ low
 
 ## 7. 기술 스택
 
-- Next.js
-- React
-- TypeScript
 - Three.js
-- Vercel
+  - 항공영상 plane과 변화 객체의 3D 렌더링
+- Next.js App Router
+  - 페이지 라우팅 및 애플리케이션 구조
+- React
+  - UI 컴포넌트와 상태 관리
+- TypeScript
+  - annotation 및 scene 데이터 타입 정의
+- Tailwind CSS
+  - UI 스타일링
 - Shadcn/ui
-  // TODO: 추후 업데이트
+  - 접근성을 고려한 UI 컴포넌트 구성
+- Vercel Blob
+  - annotation, TIFF 이미지, thumbnail 정적 파일 저장
+- Vercel
+  - 웹 애플리케이션 배포
+- pnpm
+  - 패키지 매니저
+
+## 8. 웹 화면 / 모바일 화면 UI 
+
 
 ## 9. References
 
