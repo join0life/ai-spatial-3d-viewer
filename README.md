@@ -101,7 +101,7 @@ low
 - Shadcn/ui
   // TODO: 추후 업데이트
 
-## 9. References
+## 8. References
 
 - 국가법령정보센터, 「국토의 계획 및 이용에 관한 법률 시행령」 제30조 용도지역의 세분
 - [AI-Hub, 「항공영상 도시건물 변화탐지 데이터」](https://aihub.or.kr/aihubdata/data/view.do?currMenu=115&topMenu=100&dataSetSn=491)
