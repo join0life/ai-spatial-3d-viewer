@@ -2,6 +2,9 @@
 
 > AI-Hub 항공영상 도시건물 변화탐지 데이터의 과거/현재 이미지쌍과 annotation을 기반으로, 준주거지역 내 건물 변화 객체를 Three.js 기반 3D 공간에서 시각화한 프론트엔드 포트폴리오입니다.
 
+[서비스 URL]
+https://ai-spatial-3d-viewer.vercel.app/scenes/2015_EPG_JJG_000202
+
 ## 1. 프로젝트 개요
 
 본 프로젝트는 항공영상 기반 건물 변화탐지 결과를 웹에서 직관적으로 검토할 수 있도록 만든 3D 시각화 뷰어입니다.
@@ -117,7 +120,8 @@ Before / After segmented control을 사용해 과거 항공영상과 현재 항�
   - 패키지 매니저
 
 ## 8. 웹 화면 / 모바일 화면 UI 
-
+<img width="1678" height="891" alt="image" src="https://github.com/user-attachments/assets/49ccfeef-b266-4bb2-8f55-bd2c682a4030" />
+<img width="414" height="715" alt="image" src="https://github.com/user-attachments/assets/42b885d3-2967-44d0-9598-baa3f6ba020d" />
 
 ## 9. References
 
