@@ -29,10 +29,10 @@ import { applyVisualizationMode } from "@/features/scene/lib/viewer-helpers";
 import type {
   ImagePeriod,
   NormalizedSceneData,
-  RawSceneAnnotation,
   SceneObject,
   VisualizationMode,
 } from "@/features/scene/types/scene";
+import type { AihubRawAnnotationFile } from "@/features/scene/types/aihub-annotation";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
 import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
@@ -219,7 +219,7 @@ export function useSceneViewer({
           throw new Error(`HTTP ${response.status}`);
         }
 
-        const rawAnnotation: RawSceneAnnotation = await response.json();
+        const rawAnnotation: AihubRawAnnotationFile = await response.json();
         const normalizedAnnotationData = normalizeSceneAnnotation(rawAnnotation);
         annotationData = normalizedAnnotationData;
 
