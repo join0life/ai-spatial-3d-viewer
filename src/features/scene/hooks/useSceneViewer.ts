@@ -3,7 +3,6 @@
 import {
   VIEWER_INTERACTION,
   VIEWER_PLANE,
-  VIEWER_SCENE,
 } from "@/features/scene/constants/viewer";
 import { normalizeSceneAnnotation } from "@/features/scene/lib/annotation-mappers";
 import { getSceneById, type SceneId } from "@/features/scene/lib/scenes";
@@ -19,6 +18,7 @@ import {
   findClickedSceneObject,
   renderSelectionHighlight,
 } from "@/features/scene/lib/scene-interaction";
+import { createSceneRenderer } from "@/features/scene/lib/scene-renderer";
 import {
   applyImagePeriodTexture,
   disposeSceneTextures,
@@ -35,7 +35,6 @@ import type {
 } from "@/features/scene/types/scene";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TIFFLoader } from "three/addons/loaders/TIFFLoader.js";
 
 type UseSceneViewerParams = {
@@ -127,34 +126,8 @@ export function useSceneViewer({
     let annotationData: NormalizedSceneData | null = null;
     const annotationRequest = new AbortController();
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(VIEWER_SCENE.backgroundColor);
-
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-    camera.position.set(0, 8, 8);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.domElement.style.display = "block";
-    container.appendChild(renderer.domElement);
-
-    const resize = () => {
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-
-      if (width === 0 || height === 0) {
-        return;
-      }
-
-      renderer.setSize(width, height);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-    };
-
-    const resizeObserver = new ResizeObserver(resize);
-    resizeObserver.observe(container);
-    resize();
+    const sceneRenderer = createSceneRenderer(container);
+    const { scene, camera, renderer } = sceneRenderer;
 
     const planeGeometry = new THREE.PlaneGeometry(
       VIEWER_PLANE.width,
@@ -180,13 +153,6 @@ export function useSceneViewer({
       getCurrentImagePeriod: () => imagePeriodRef.current,
       isDisposed: () => disposed,
     });
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.target.set(0, 0, 0);
-    controls.minDistance = 4;
-    controls.maxDistance = 24;
-    controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
     const layers = createSceneAnnotationLayerResources(
       visualizationModeRef.current,
@@ -274,21 +240,11 @@ export function useSceneViewer({
 
     void loadAnnotation();
 
-    let animationFrameId = 0;
-
-    const animate = () => {
-      controls.update();
-      renderer.render(scene, camera);
-      animationFrameId = window.requestAnimationFrame(animate);
-    };
-
-    animate();
+    sceneRenderer.startAnimation();
 
     return () => {
       disposed = true;
       annotationRequest.abort();
-      window.cancelAnimationFrame(animationFrameId);
-      resizeObserver.disconnect();
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       planeGeometry.dispose();
@@ -299,9 +255,7 @@ export function useSceneViewer({
       layersRef.current = null;
       planeMaterialRef.current = null;
       imagePeriodTexturesRef.current = {};
-      controls.dispose();
-      renderer.dispose();
-      renderer.domElement.remove();
+      sceneRenderer.dispose();
     };
   }, [containerRef, sceneId]);
 
