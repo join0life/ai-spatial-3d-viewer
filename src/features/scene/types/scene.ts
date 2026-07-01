@@ -23,31 +23,6 @@ export type BBox = {
   height: number;
 };
 
-export type RawPolygonAnnotation = {
-  "polygon.id": string;
-  "polygon.name": string;
-  "polygon.points": Point2D[];
-  "polygon.shape": number;
-  "polygon.shift": number;
-  "polygon.update"?: number | number[];
-  "polygon.updates"?: number[];
-  "polygon.address"?: string;
-};
-
-export type RawSceneAnnotation = {
-  info: {
-    "info.category": number;
-    [key: string]: unknown;
-  };
-  images: {
-    "images.id": string;
-    "images.width": number;
-    "images.height": number;
-    [key: string]: unknown;
-  };
-  annotations: RawPolygonAnnotation[];
-};
-
 export type SceneObject = {
   id: string;
   name: string;
@@ -58,7 +33,6 @@ export type SceneObject = {
   changeType: ChangeType;
   updateTypes: UpdateType[];
   shapeType: ShapeType;
-  address: string | null;
   displayPriority: DisplayPriority;
   visualHeight: number;
 };

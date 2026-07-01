@@ -1,11 +1,13 @@
 import { normalizePairedImagePolygon } from "@/features/scene/lib/coordinates";
 import { calculateBBox, getBBoxCenter } from "@/features/scene/lib/geometry";
 import type {
+  AihubRawAnnotationFile,
+  AihubRawPolygonAnnotation,
+} from "@/features/scene/types/aihub-annotation";
+import type {
   ChangeType,
   DisplayPriority,
   NormalizedSceneData,
-  RawPolygonAnnotation,
-  RawSceneAnnotation,
   SceneObject,
   ShapeType,
   UpdateType,
@@ -58,7 +60,9 @@ export function mapShapeType(value: number): ShapeType {
   return getMappedValue(shapeTypeMap, value, "polygon.shape");
 }
 
-export function mapUpdateTypes(annotation: RawPolygonAnnotation): UpdateType[] {
+export function mapUpdateTypes(
+  annotation: AihubRawPolygonAnnotation,
+): UpdateType[] {
   const rawUpdate = annotation["polygon.updates"] ?? annotation["polygon.update"];
   const updateValues = Array.isArray(rawUpdate)
     ? rawUpdate
@@ -94,7 +98,7 @@ export function getVisualHeight(changeType: ChangeType): number {
 }
 
 function mapSceneObject(
-  annotation: RawPolygonAnnotation,
+  annotation: AihubRawPolygonAnnotation,
   sourceImageWidth: number,
   sourceImageHeight: number,
 ): SceneObject {
@@ -117,14 +121,13 @@ function mapSceneObject(
     changeType,
     updateTypes,
     shapeType: mapShapeType(annotation["polygon.shape"]),
-    address: annotation["polygon.address"] ?? null,
     displayPriority: getDisplayPriority(changeType, updateTypes),
     visualHeight: getVisualHeight(changeType),
   };
 }
 
 export function normalizeSceneAnnotation(
-  rawScene: RawSceneAnnotation,
+  rawScene: AihubRawAnnotationFile,
 ): NormalizedSceneData {
   const sourceImageWidth = rawScene.images["images.width"];
   const imageHeight = rawScene.images["images.height"];
