@@ -2,8 +2,10 @@
 
 > AI-Hub 항공영상 도시건물 변화탐지 데이터의 과거/현재 이미지쌍과 annotation을 기반으로, 준주거지역 내 건물 변화 객체를 Three.js 기반 3D 공간에서 시각화한 프론트엔드 포트폴리오입니다.
 
-[서비스 URL]
-https://ai-spatial-3d-viewer.vercel.app/scenes/2015_EPG_JJG_000202
+> [!IMPORTANT]
+> **공개 중단 안내**
+> 2026년 11월, AI허브에 직접 문의해 가공한 데이터도 외부 공개가 제한된다는 답변을 받아 데이터 공개와 배포를 중단했습니다.
+> 현재 이 저장소에는 코드와 구현 내용만 공개하며, 배포 URL에서는 공개 중단 안내만 표시합니다.
 
 ## 1. 프로젝트 개요
 
@@ -39,7 +41,12 @@ AI-Hub 항공영상 도시건물 변화탐지 데이터는 과거 항공영상�
 
 ### 5.1 데이터 사용 안내
 
-AI-Hub 원본 데이터 및 원본 annotation 파일은 이용정책상 repository에 포함하지 않았습니다.  
+AI-Hub 데이터는 이용 자격을 갖춘 개인이 직접 신청하고 다운로드하는 방식으로 제공되며, 샘플(경량) 데이터에도 같은 이용정책이 적용됩니다.
+
+AI허브 답변에 따르면 원본뿐 아니라 이미지 분리, 썸네일 생성, 파일 형식 변환 등으로 가공한 데이터도 외부 공개와 재배포가 제한됩니다.
+이에 따라 이 저장소에는 원본 데이터와 가공 데이터를 포함하지 않으며, 웹 뷰어에서 참조하던 외부 저장소의 데이터도 공개를 중단했습니다.
+
+뷰어를 직접 실행하려면 AI-Hub에서 데이터를 직접 신청해 내부 환경에서 사용해야 합니다.
 
 ### 5.2 데이터 가공
 
@@ -73,6 +80,8 @@ low
 ```
 
 ## 6. 주요 기능
+
+> 현재 배포는 중단되어 웹에서 직접 체험할 수 없습니다. 아래는 구현한 기능에 대한 설명입니다.
 
 ### Before / After Image
 
@@ -111,16 +120,13 @@ Before / After segmented control을 사용해 과거 항공영상과 현재 항�
   - UI 스타일링
 - Shadcn/ui
   - 접근성을 고려한 UI 컴포넌트 구성
-- Vercel Blob
-  - annotation, TIFF 이미지, thumbnail 정적 파일 저장
 - Vercel
   - 웹 애플리케이션 배포
 - pnpm
   - 패키지 매니저
 
 ## 8. 웹 화면 / 모바일 화면 UI 
-<img width="1678" height="891" alt="image" src="https://github.com/user-attachments/assets/49ccfeef-b266-4bb2-8f55-bd2c682a4030" />
-<img width="414" height="715" alt="image" src="https://github.com/user-attachments/assets/42b885d3-2967-44d0-9598-baa3f6ba020d" />
+(AI-Hub 이용정책상 삭제하였습니다.)
 
 ## 9. References
 
